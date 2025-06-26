@@ -6,4 +6,7 @@ scikit-image
 numpy
 fpdf
 Pillow
-matplotlib 
+matplotlib
+torch
+torchvision
+  # pip install git+https://github.com/openai/CLIP.git

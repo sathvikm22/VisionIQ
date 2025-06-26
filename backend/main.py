@@ -4,9 +4,9 @@ import time
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from backend.utils.image_processing import analyze_images
-from backend.utils.pdf_report import generate_pdf_report
-from backend.models import AnalyzeResponse
+from .utils.image_processing import analyze_images
+from .utils.pdf_report import generate_pdf_report
+from .models import AnalyzeResponse
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
@@ -46,4 +46,8 @@ async def analyze(
 @app.get("/export/{filename}")
 async def export(filename: str):
     file_path = f"backend/static/results/{filename}"
-    return FileResponse(file_path) 
+    return FileResponse(file_path)
+
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"} 
