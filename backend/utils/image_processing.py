@@ -310,13 +310,24 @@ async def analyze_images(master_path: str, comparison_images: list, algorithm: s
             mask_for_contours = mask_for_contours.astype(np.uint8)
         contours, _ = cv2.findContours(mask_for_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         num_diffs = sum(1 for cnt in contours if cv2.contourArea(cnt) > 25)
+        # Ensure URLs start with /static/results/
+        def url_with_leading_slash(url):
+            if not url:
+                return ""
+            url = url.replace("backend/static", "/static")
+            if not url.startswith("/static/"):
+                if url.startswith("static/"):
+                    url = "/" + url
+                elif not url.startswith("/static/"):
+                    url = "/static/results/" + os.path.basename(url)
+            return url
         similarities.append(similarity)
         results["comparisons"].append({
             "filename": comp_file.filename,
             "similarity_score": round(similarity, 2),
             "num_differences": int(num_diffs),
-            "processed_image_url": processed_image_path.replace("backend/static", "static"),
-            "visual_output": visual_output_path.replace("backend/static", "static") if visual_output_path else "",
+            "processed_image_url": url_with_leading_slash(processed_image_path),
+            "visual_output": url_with_leading_slash(visual_output_path) if visual_output_path else "",
             "visual_label": visual_label
         })
     results["overall_similarity"] = round(np.mean(similarities), 2) if similarities else 0

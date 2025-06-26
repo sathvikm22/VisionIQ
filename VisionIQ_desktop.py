@@ -2,6 +2,7 @@ import sys
 import os
 import requests
 import uuid
+import time
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog, QComboBox, QSlider,
     QProgressBar, QScrollArea, QFrame, QSizePolicy
@@ -294,6 +295,19 @@ class VisionIQApp(QWidget):
         self.thread.errorOccurred.connect(self.show_error)
         self.thread.start()
 
+    def try_load_image(self, url, max_retries=5, delay=0.2):
+        for _ in range(max_retries):
+            try:
+                img_data = requests.get(url)
+                if img_data.status_code == 200 and img_data.content:
+                    pix = QPixmap()
+                    if pix.loadFromData(img_data.content):
+                        return pix
+            except Exception:
+                pass
+            time.sleep(delay)
+        return None
+
     def display_results(self, data):
         self.progress.setVisible(False)
         self.export_btn.setVisible(True)
@@ -324,14 +338,10 @@ class VisionIQApp(QWidget):
             green_img.setStyleSheet("border:2px solid #00cc66; border-radius:8px; background:#f7fafd;")
             green_url = comp.get('processed_image_url')
             if green_url:
-                try:
-                    img_data = requests.get(get_backend_url() + green_url).content
-                    pix = QPixmap()
-                    if pix.loadFromData(img_data):
-                        green_img.setPixmap(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                    else:
-                        green_img.setText("Image not found")
-                except Exception:
+                pix = self.try_load_image(get_backend_url() + green_url)
+                if pix:
+                    green_img.setPixmap(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                else:
                     green_img.setText("Image not found")
             else:
                 green_img.setText("Image not found")
@@ -346,14 +356,10 @@ class VisionIQApp(QWidget):
             visual_img.setStyleSheet("border:2px solid #0073e6; border-radius:8px; background:#f7fafd;")
             visual_url = comp.get('visual_output')
             if visual_url:
-                try:
-                    img_data = requests.get(get_backend_url() + visual_url).content
-                    pix = QPixmap()
-                    if pix.loadFromData(img_data):
-                        visual_img.setPixmap(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                    else:
-                        visual_img.setText("Image not found")
-                except Exception:
+                pix = self.try_load_image(get_backend_url() + visual_url)
+                if pix:
+                    visual_img.setPixmap(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                else:
                     visual_img.setText("Image not found")
             else:
                 visual_img.setText("Image not found")
