@@ -298,111 +298,68 @@ class VisionIQApp(QWidget):
         self.progress.setVisible(False)
         self.export_btn.setVisible(True)
         # Clear previous results
-        while self.results_layout.count():
-            child = self.results_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-        # Show overall similarity and processing time (compact)
-        overall_card = QFrame()
-        overall_card.setObjectName("Card")
-        overall_layout = QHBoxLayout(overall_card)
-        overall_layout.setSpacing(6)
-        overall_label = QLabel("Overall Similarity")
-        overall_label.setFont(QFont("Arial", 14, QFont.Bold))
-        overall_label.setAlignment(Qt.AlignLeft)
-        overall_layout.addWidget(overall_label)
-        sim_val = QLabel(f"{data.get('overall_similarity','')}%")
-        sim_val.setFont(QFont("Arial", 16, QFont.Bold))
-        sim_val.setStyleSheet("color:#009933;")
-        sim_val.setAlignment(Qt.AlignLeft)
-        overall_layout.addWidget(sim_val)
-        overall_layout.addStretch()
-        proc_time = QLabel(f"Processing: {data.get('processing_time',0):.2f}s")
-        proc_time.setFont(QFont("Arial", 11, QFont.Bold))
-        proc_time.setStyleSheet("color:#0073e6;")
-        proc_time.setAlignment(Qt.AlignRight)
-        overall_layout.addWidget(proc_time)
-        self.results_layout.addWidget(overall_card)
-        # Show each result
-        results = data.get('results', data.get('comparisons', []))
-        if not results:
-            msg = QLabel("No results found.")
-            msg.setAlignment(Qt.AlignCenter)
-            self.results_layout.addWidget(msg)
-            return
-        for comp in results:
+        for i in reversed(range(self.results_layout.count())):
+            widget = self.results_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+        # For each comparison, show filename, similarity, differences, and two images side by side
+        for comp in data["comparisons"]:
             card = QFrame()
             card.setObjectName("Card")
-            card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            layout = QVBoxLayout(card)
-            layout.setSpacing(6)
-            # Filename, similarity, differences (compact)
-            name = QLabel(comp.get('filename',''))
-            name.setFont(QFont("Arial", 12, QFont.Bold))
-            name.setAlignment(Qt.AlignCenter)
-            layout.addWidget(name)
-            sim = QLabel(f"Similarity: {comp.get('similarity_score','')}%")
-            sim.setFont(QFont("Arial", 13, QFont.Bold))
-            sim.setStyleSheet("color:#009933;")
-            sim.setAlignment(Qt.AlignCenter)
-            layout.addWidget(sim)
-            diff = QLabel(f"Differences: {comp.get('num_differences','')}")
-            diff.setFont(QFont("Arial", 12, QFont.Bold))
-            diff.setStyleSheet("color:#0073e6;")
-            diff.setAlignment(Qt.AlignCenter)
-            layout.addWidget(diff)
-            # Headings
-            headings_row = QHBoxLayout()
-            diff_head = QLabel("Difference")
-            diff_head.setFont(QFont("Arial", 11, QFont.Bold))
-            diff_head.setAlignment(Qt.AlignCenter)
-            headings_row.addWidget(diff_head)
-            algo_head = QLabel(comp.get('visual_label',''))
-            algo_head.setFont(QFont("Arial", 11, QFont.Bold))
-            algo_head.setAlignment(Qt.AlignCenter)
-            headings_row.addWidget(algo_head)
-            layout.addLayout(headings_row)
-            # Output images side by side, large and same size
+            card_layout = QVBoxLayout(card)
+            # Info row
+            info_row = QHBoxLayout()
+            info_row.addWidget(QLabel(f"<b>Filename:</b> {comp['filename']}"))
+            info_row.addWidget(QLabel(f"<b>Similarity:</b> {comp['similarity_score']}%"))
+            info_row.addWidget(QLabel(f"<b>Differences:</b> {comp['num_differences']}"))
+            card_layout.addLayout(info_row)
+            # Images row
             images_row = QHBoxLayout()
-            # Difference image
-            img = QLabel()
-            img.setAlignment(Qt.AlignCenter)
-            img.setFixedSize(150, 150)
-            img_url = comp.get('processed_image_url')
-            if img_url:
+            # Green-bounded image
+            left_col = QVBoxLayout()
+            left_col.addWidget(QLabel("Differences (Green Boxes):"))
+            green_img = QLabel()
+            green_img.setFixedSize(200, 200)
+            green_img.setAlignment(Qt.AlignCenter)
+            green_img.setStyleSheet("border:2px solid #00cc66; border-radius:8px; background:#f7fafd;")
+            green_url = comp.get('processed_image_url')
+            if green_url:
                 try:
-                    img_data = requests.get(BACKEND_URL + img_url + f'?nocache={uuid.uuid4()}').content
+                    img_data = requests.get(get_backend_url() + green_url).content
                     pix = QPixmap()
                     if pix.loadFromData(img_data):
-                        img.setPixmap(pix.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                        green_img.setPixmap(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
                     else:
-                        img.setText("Image not found")
+                        green_img.setText("Image not found")
                 except Exception:
-                    img.setText("Image not found")
+                    green_img.setText("Image not found")
             else:
-                img.setText("Image not found")
-            img.setStyleSheet("border:2px solid #00cc66; border-radius:10px; background:#eaf1fb;")
-            images_row.addWidget(img)
+                green_img.setText("Image not found")
+            left_col.addWidget(green_img)
+            images_row.addLayout(left_col)
             # Visual output image
-            vis = QLabel()
-            vis.setAlignment(Qt.AlignCenter)
-            vis.setFixedSize(150, 150)
-            vis_url = comp.get('visual_output')
-            if vis_url:
+            right_col = QVBoxLayout()
+            right_col.addWidget(QLabel(f"{comp.get('visual_label', 'Visual Output')}:"))
+            visual_img = QLabel()
+            visual_img.setFixedSize(200, 200)
+            visual_img.setAlignment(Qt.AlignCenter)
+            visual_img.setStyleSheet("border:2px solid #0073e6; border-radius:8px; background:#f7fafd;")
+            visual_url = comp.get('visual_output')
+            if visual_url:
                 try:
-                    vis_data = requests.get(BACKEND_URL + vis_url + f'?nocache={uuid.uuid4()}').content
-                    vis_pix = QPixmap()
-                    if vis_pix.loadFromData(vis_data):
-                        vis.setPixmap(vis_pix.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    img_data = requests.get(get_backend_url() + visual_url).content
+                    pix = QPixmap()
+                    if pix.loadFromData(img_data):
+                        visual_img.setPixmap(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
                     else:
-                        vis.setText("Visual not found")
+                        visual_img.setText("Image not found")
                 except Exception:
-                    vis.setText("Visual not found")
+                    visual_img.setText("Image not found")
             else:
-                vis.setText("Visual not found")
-            vis.setStyleSheet("border:2px solid #0073e6; border-radius:10px; background:#eaf1fb;")
-            images_row.addWidget(vis)
-            layout.addLayout(images_row)
+                visual_img.setText("Image not found")
+            right_col.addWidget(visual_img)
+            images_row.addLayout(right_col)
+            card_layout.addLayout(images_row)
             self.results_layout.addWidget(card)
         self.pdf_url = data.get('pdf_url')
 
