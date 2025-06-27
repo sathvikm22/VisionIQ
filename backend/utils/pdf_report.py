@@ -49,29 +49,52 @@ def generate_pdf_report(master_path: str, processed_paths: List[str], results: D
         try:
             pdf.set_font("Arial", 'B', 11)
             pdf.cell(0, 8, f"{comp['filename']} - Differences Highlighted", ln=True)
-            green_box_path = os.path.join("backend/static", comp["processed_image_url"].replace("static/", ""))
-            if comp["processed_image_url"] and os.path.exists(green_box_path):
+            # Robust path resolution for green box image
+            green_box_path = comp["processed_image_url"]
+            if green_box_path.startswith("/static/"):
+                green_box_path = green_box_path.replace("/static/", "backend/static/")
+            elif green_box_path.startswith("static/"):
+                green_box_path = green_box_path.replace("static/", "backend/static/")
+            elif not green_box_path.startswith("backend/static/"):
+                green_box_path = os.path.join("backend/static/results", os.path.basename(green_box_path))
+            if not os.path.exists(green_box_path):
+                # Fallback: search in backend/static/results
+                alt_path = os.path.join("backend/static/results", os.path.basename(green_box_path))
+                if os.path.exists(alt_path):
+                    green_box_path = alt_path
+            if os.path.exists(green_box_path):
                 pdf.image(green_box_path, w=80)
             else:
                 pdf.set_font("Arial", 'I', 10)
-                pdf.cell(0, 7, "Image not found", ln=True)
-        except Exception:
+                pdf.cell(0, 7, f"Image not found: {green_box_path}", ln=True)
+        except Exception as e:
             pdf.set_font("Arial", 'I', 10)
-            pdf.cell(0, 7, "Image not found", ln=True)
+            pdf.cell(0, 7, f"Image not found: {str(e)}", ln=True)
         # Unique visual
         if comp.get("visual_output"):
             try:
                 pdf.set_font("Arial", 'I', 10)
                 pdf.cell(0, 7, f"{comp.get('visual_label', '')}", ln=True)
-                visual_path = os.path.join("backend/static", comp["visual_output"].replace("static/", ""))
-                if comp["visual_output"] and os.path.exists(visual_path):
+                visual_path = comp["visual_output"]
+                if visual_path.startswith("/static/"):
+                    visual_path = visual_path.replace("/static/", "backend/static/")
+                elif visual_path.startswith("static/"):
+                    visual_path = visual_path.replace("static/", "backend/static/")
+                elif not visual_path.startswith("backend/static/"):
+                    visual_path = os.path.join("backend/static/results", os.path.basename(visual_path))
+                if not os.path.exists(visual_path):
+                    # Fallback: search in backend/static/results
+                    alt_path = os.path.join("backend/static/results", os.path.basename(visual_path))
+                    if os.path.exists(alt_path):
+                        visual_path = alt_path
+                if os.path.exists(visual_path):
                     pdf.image(visual_path, w=80)
                 else:
                     pdf.set_font("Arial", 'I', 10)
-                    pdf.cell(0, 7, "Image not found", ln=True)
-            except Exception:
+                    pdf.cell(0, 7, f"Image not found: {visual_path}", ln=True)
+            except Exception as e:
                 pdf.set_font("Arial", 'I', 10)
-                pdf.cell(0, 7, "Image not found", ln=True)
+                pdf.cell(0, 7, f"Image not found: {str(e)}", ln=True)
         pdf.ln(2)
     # Overall stats
     pdf.set_font("Arial", 'B', 13)

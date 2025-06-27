@@ -126,6 +126,8 @@ class VisionIQApp(QWidget):
         comp_label_row.addWidget(comp_label)
         comp_label_row.addStretch()
         comp_layout.addLayout(comp_label_row)
+        # Remove extra space above thumbnails
+        comp_layout.setContentsMargins(0, 0, 0, 0)
         # Horizontally scrollable area for comparison images
         self.comp_thumbs = QHBoxLayout()
         self.comp_thumbs.setSpacing(10)
@@ -135,7 +137,7 @@ class VisionIQApp(QWidget):
         comp_thumb_widget.setLayout(self.comp_thumbs)
         comp_thumb_scroll = QScrollArea()
         comp_thumb_scroll.setWidgetResizable(True)
-        comp_thumb_scroll.setFixedHeight(120)
+        comp_thumb_scroll.setFixedHeight(240)
         comp_thumb_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         comp_thumb_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         comp_thumb_scroll.setWidget(comp_thumb_widget)
@@ -241,8 +243,8 @@ class VisionIQApp(QWidget):
             thumb_layout.setContentsMargins(0,0,0,0)
             lbl = QLabel()
             pix = QPixmap(p)
-            lbl.setPixmap(pix.scaled(70, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            lbl.setStyleSheet("border-radius:8px;margin-right:6px;background:#eaf1fb; border:2px solid #0073e6; min-width:70px; min-height:70px; max-width:70px; max-height:70px;")
+            lbl.setPixmap(pix.scaled(220, 220, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            lbl.setStyleSheet("border-radius:14px;margin-right:6px;background:#eaf1fb; border:2px solid #0073e6; min-width:220px; min-height:220px; max-width:220px; max-height:220px;")
             lbl.setAlignment(Qt.AlignCenter)
             thumb_layout.addWidget(lbl)
             rm_btn = QPushButton("✕")
