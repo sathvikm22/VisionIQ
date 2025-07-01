@@ -9,4 +9,19 @@ Pillow
 matplotlib
 torch
 torchvision
-  # pip install git+https://github.com/openai/CLIP.git
+ultralytics
+insightface
+segment-anything
+# DINOv2 and SigNet may require manual model download or extra setup
+# For signature verification
+requests
+# For ViT/SimCLR/Triplet Loss signature models
+transformers
+# pip install git+https://github.com/openai/CLIP.git
+timm
+# For desktop application
+PyQt5
+# For background removal
+rembg
+# For CLIP model
+git+https://github.com/openai/CLIP.git

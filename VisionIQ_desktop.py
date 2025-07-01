@@ -3,6 +3,7 @@ import os
 import requests
 import uuid
 import time
+import random
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog, QComboBox, QSlider,
     QProgressBar, QScrollArea, QFrame, QSizePolicy
@@ -49,7 +50,7 @@ class AnalyzeThread(QThread):
 class VisionIQApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("VisionIQ - Desktop Edition")
+        self.setWindowTitle("Vision Analysis System")
         self.resize(1280, 900)
         self.master_path = None
         self.comparison_paths = []
@@ -61,33 +62,58 @@ class VisionIQApp(QWidget):
         # --- HAL-inspired white & blue theme ---
         self.setStyleSheet("""
             QWidget { background: #f7fafd; color: #003366; font-family: Arial, Helvetica, sans-serif; font-size: 16px; }
-            QPushButton { background-color: #0073e6; color: white; border-radius: 10px; padding: 12px 28px; font-weight: 700; font-size: 16px; }
-            QPushButton:hover { background-color: #005bb5; }
-            QPushButton:pressed { background-color: #003366; }
-            QLabel { color: #003366; font-weight: 700; font-family: Arial, Helvetica, sans-serif; }
-            QFrame#Card { background-color: #fff; border-radius: 18px; padding: 22px; border: 2px solid #0073e6; }
+            QPushButton { background-color: #00AEEF; color: white; border-radius: 10px; padding: 12px 28px; font-weight: 700; font-size: 16px; }
+            QPushButton:hover { background-color: #008cba; }
+            QPushButton:pressed { background-color: #005f7f; }
+            QLabel { color: #005f7f; font-weight: 700; font-family: Arial, Helvetica, sans-serif; }
+            QFrame#Card { background-color: #fff; border-radius: 18px; padding: 22px; border: 2px solid #00AEEF; }
             QScrollArea { background-color: transparent; border: none; }
-            QComboBox, QSlider { background-color: #eaf1fb; color: #003366; border-radius: 8px; font-size: 16px; }
+            QComboBox, QSlider { background-color: #eaf1fb; color: #005f7f; border-radius: 8px; font-size: 16px; }
             QComboBox { padding: 8px 18px; min-width: 140px; font-weight: 600; }
             QComboBox QAbstractItemView { background: #fff; border-radius: 8px; font-size: 16px; }
             QSlider::groove:horizontal { height: 8px; background: #e0e7ef; border-radius: 4px; }
-            QSlider::handle:horizontal { background: #0073e6; border-radius: 10px; width: 20px; height: 20px; margin: -6px 0; }
-            QProgressBar { background: #eaf1fb; color: #003366; border-radius: 8px; font-size: 16px; }
-            QToolTip { background-color: #fff; color: #003366; border: 1px solid #0073e6; font-size: 15px; }
+            QSlider::handle:horizontal { background: #00AEEF; border-radius: 10px; width: 20px; height: 20px; margin: -6px 0; }
+            QProgressBar { background: #eaf1fb; color: #005f7f; border-radius: 8px; font-size: 16px; }
+            QToolTip { background-color: #fff; color: #005f7f; border: 1px solid #00AEEF; font-size: 15px; }
         """)
         main_layout = QVBoxLayout(self)
-        # --- Title ---
-        title = QLabel("VisionIQ: Advanced Image Comparison")
-        title.setFont(QFont("Arial", 28, QFont.Bold))
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("color:#003366; margin-bottom: 18px; margin-top: 12px; letter-spacing: 0.5px;")
-        main_layout.addWidget(title)
+        # --- Topbar with logo and heading ---
+        topbar_frame = QFrame()
+        topbar_frame.setStyleSheet('background: #fff; border-bottom: 3px solid #00AEEF;')
+        topbar_layout = QHBoxLayout(topbar_frame)
+        topbar_layout.setContentsMargins(24, 12, 24, 12)
+        topbar_layout.setSpacing(18)
+        # Logo on the left
+        logo_label = QLabel()
+        logo_pixmap = QPixmap('hal_logo.png')
+        if not logo_pixmap.isNull():
+            logo_label.setPixmap(logo_pixmap.scaled(200, 140, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        else:
+            logo_label.setText("")
+        logo_label.setFixedSize(210, 140)
+        logo_label.setStyleSheet('background: transparent;')
+        topbar_layout.addWidget(logo_label, alignment=Qt.AlignLeft)
+        # Spacer
+        topbar_layout.addStretch(2)
+        # Heading in the center-right
+        heading = QLabel('Visual Analysis System')
+        font = QFont('Arial', 60)
+        font.setBold(True)
+        font.setWeight(QFont.Black)
+        heading.setFont(font)
+        heading.setStyleSheet('color:#003366; letter-spacing: 0.5px; background: transparent; font-weight: 980; text-decoration: none; font-size: 40pt;')
+        heading.setMinimumHeight(80)
+        topbar_layout.addWidget(heading, alignment=Qt.AlignVCenter)
+        topbar_layout.addStretch(3)
+        # Add topbar frame to main layout
+        main_layout.addWidget(topbar_frame)
         # --- Image upload area ---
         upload_row = QHBoxLayout()
         upload_row.setSpacing(24)
         # Master image card (left)
         master_card = QFrame()
         master_card.setObjectName("Card")
+        master_card.setStyleSheet('QFrame#Card { border: 2.5px solid #00AEEF; border-radius: 18px; background: #fff; }')
         master_layout = QVBoxLayout(master_card)
         master_layout.setSpacing(10)
         master_label_row = QHBoxLayout()
@@ -105,7 +131,7 @@ class VisionIQApp(QWidget):
         master_layout.addLayout(master_label_row)
         self.master_thumb = QLabel()
         self.master_thumb.setFixedSize(220, 220)
-        self.master_thumb.setStyleSheet("border:2px solid #0073e6; border-radius:14px; background:#eaf1fb;")
+        self.master_thumb.setStyleSheet("border-radius:14px; background:#f6f6f6;")
         self.master_thumb.setAlignment(Qt.AlignCenter)
         master_layout.addWidget(self.master_thumb, alignment=Qt.AlignCenter)
         self.upload_btn = QPushButton("Upload Master Image")
@@ -113,11 +139,13 @@ class VisionIQApp(QWidget):
         self.upload_btn.setCursor(Qt.PointingHandCursor)
         self.upload_btn.setFont(QFont("Arial", 15, QFont.Bold))
         self.upload_btn.clicked.connect(self.upload_master)
+        self.upload_btn.setStyleSheet("margin-top: 10px;")
         master_layout.addWidget(self.upload_btn)
         upload_row.addWidget(master_card, 2)
         # Comparison images card (right)
         comp_card = QFrame()
         comp_card.setObjectName("Card")
+        comp_card.setStyleSheet('QFrame#Card { border: 2.5px solid #00AEEF; border-radius: 18px; background: #fff; }')
         comp_layout = QVBoxLayout(comp_card)
         comp_layout.setSpacing(10)
         comp_label_row = QHBoxLayout()
@@ -126,9 +154,7 @@ class VisionIQApp(QWidget):
         comp_label_row.addWidget(comp_label)
         comp_label_row.addStretch()
         comp_layout.addLayout(comp_label_row)
-        # Remove extra space above thumbnails
         comp_layout.setContentsMargins(0, 0, 0, 0)
-        # Horizontally scrollable area for comparison images
         self.comp_thumbs = QHBoxLayout()
         self.comp_thumbs.setSpacing(10)
         self.comp_thumb_widgets = []
@@ -147,6 +173,7 @@ class VisionIQApp(QWidget):
         self.comp_btn.setCursor(Qt.PointingHandCursor)
         self.comp_btn.setFont(QFont("Arial", 15, QFont.Bold))
         self.comp_btn.clicked.connect(self.upload_comparisons)
+        self.comp_btn.setStyleSheet("margin-top: 10px;")
         comp_layout.addWidget(self.comp_btn)
         upload_row.addWidget(comp_card, 2)
         main_layout.addLayout(upload_row)
@@ -159,18 +186,24 @@ class VisionIQApp(QWidget):
         algo_label = QLabel("Algorithm")
         algo_label.setToolTip("Select the comparison algorithm")
         algo_label.setFont(QFont("Arial", 15, QFont.Bold))
-        controls_layout.addWidget(algo_label)
+        algo_label.setStyleSheet('background: #eaf1fb; border-radius: 8px; padding: 6px 16px; min-width: 0;')
+        controls_layout.addWidget(algo_label, 0)
         self.algo_combo = QComboBox()
         self.algo_combo.setToolTip("Select the comparison algorithm")
-        self.algo_combo.addItems(["SSIM", "MSE", "PSNR", "Histogram", "Feature Matching", "Deep Learning"])
+        self.algo_combo.addItems([
+            "SSIM", "MSE", "PSNR", "Histogram", "Feature Matching", "Deep Learning",
+            "Face Verification", "Machine Part Comparison", "Signature Verification"
+        ])
         self.algo_combo.setFont(QFont("Arial", 15, QFont.Bold))
         self.algo_combo.setCursor(Qt.PointingHandCursor)
-        controls_layout.addWidget(self.algo_combo)
+        self.algo_combo.setStyleSheet('QComboBox { background: #fff; border: 2px solid #00AEEF; border-radius: 8px; padding: 6px 24px 6px 12px; min-width: 120px; font-size: 16px; } QComboBox::drop-down { border: none; } QComboBox QAbstractItemView { background: #fff; border-radius: 8px; font-size: 16px; selection-background-color: #eaf1fb; }')
+        controls_layout.addWidget(self.algo_combo, 0)
         # Sensitivity
         sens_label = QLabel("Sensitivity")
         sens_label.setToolTip("Adjust the sensitivity for difference detection")
         sens_label.setFont(QFont("Arial", 15, QFont.Bold))
-        controls_layout.addWidget(sens_label)
+        sens_label.setStyleSheet('background: #eaf1fb; border-radius: 8px; padding: 6px 16px; min-width: 0;')
+        controls_layout.addWidget(sens_label, 0)
         self.sens_slider = QSlider(Qt.Horizontal)
         self.sens_slider.setMinimum(0)
         self.sens_slider.setMaximum(100)
@@ -178,11 +211,13 @@ class VisionIQApp(QWidget):
         self.sens_slider.setToolTip("Adjust the sensitivity for difference detection")
         self.sens_slider.setFixedWidth(220)
         self.sens_slider.setCursor(Qt.PointingHandCursor)
-        controls_layout.addWidget(self.sens_slider)
+        self.sens_slider.setStyleSheet('QSlider::groove:horizontal { height: 14px; background: #e0e7ef; border-radius: 7px; } QSlider::handle:horizontal { background: #00AEEF; border-radius: 10px; width: 28px; height: 28px; margin: -8px 0; border: 2px solid #008cba; }')
+        controls_layout.addWidget(self.sens_slider, 0)
         self.sens_val_label = QLabel("100%")
         self.sens_val_label.setToolTip("Current sensitivity value")
         self.sens_val_label.setFont(QFont("Arial", 15, QFont.Bold))
-        controls_layout.addWidget(self.sens_val_label)
+        self.sens_val_label.setStyleSheet('background: #eaf1fb; border-radius: 8px; padding: 6px 16px; min-width: 0;')
+        controls_layout.addWidget(self.sens_val_label, 0)
         self.sens_slider.valueChanged.connect(lambda v: self.sens_val_label.setText(f"{v}%"))
         # Buttons
         self.analyze_btn = QPushButton("Analysis")
@@ -190,8 +225,9 @@ class VisionIQApp(QWidget):
         self.analyze_btn.setFixedWidth(140)
         self.analyze_btn.setFont(QFont("Arial", 15, QFont.Bold))
         self.analyze_btn.setCursor(Qt.PointingHandCursor)
+        self.analyze_btn.setStyleSheet('margin-left: 12px;')
         self.analyze_btn.clicked.connect(self.start_analysis)
-        controls_layout.addWidget(self.analyze_btn)
+        controls_layout.addWidget(self.analyze_btn, 0)
         self.export_btn = QPushButton("Download")
         self.export_btn.setToolTip("Download the results as a PDF report")
         self.export_btn.setFixedWidth(140)
@@ -199,14 +235,14 @@ class VisionIQApp(QWidget):
         self.export_btn.setCursor(Qt.PointingHandCursor)
         self.export_btn.clicked.connect(self.download_pdf)
         self.export_btn.setVisible(False)
-        controls_layout.addWidget(self.export_btn)
+        controls_layout.addWidget(self.export_btn, 0)
         self.clear_btn = QPushButton("Clear")
         self.clear_btn.setToolTip("Clear all images and results")
         self.clear_btn.setFixedWidth(100)
         self.clear_btn.setFont(QFont("Arial", 15, QFont.Bold))
         self.clear_btn.setCursor(Qt.PointingHandCursor)
         self.clear_btn.clicked.connect(self.clear_all)
-        controls_layout.addWidget(self.clear_btn)
+        controls_layout.addWidget(self.clear_btn, 0)
         main_layout.addWidget(controls_card)
         # --- Results area ---
         self.results_area = QScrollArea()
@@ -327,20 +363,47 @@ class VisionIQApp(QWidget):
             info_row = QHBoxLayout()
             info_row.addWidget(QLabel(f"<b>Filename:</b> {comp['filename']}"))
             info_row.addWidget(QLabel(f"<b>Similarity:</b> {comp['similarity_score']}%"))
-            info_row.addWidget(QLabel(f"<b>Differences:</b> {comp['num_differences']}"))
+
+            # Show meaningful difference information based on algorithm
+            if "Face Crop Comparison" in comp.get('visual_label', ''):
+                # For face verification, only show Result if assessment is not 'No face detected'
+                assessment = comp.get('assessment', 'No face detected')
+                if assessment not in ['No face detected', '', None]:
+                    # If assessment is 'Different Person', show 'No similar faces found'
+                    if assessment == 'Different Person':
+                        result_label = QLabel(f"<b>Result:</b> No similar faces found")
+                    else:
+                        result_label = QLabel(f"<b>Result:</b> {assessment}")
+                        info_row.addWidget(result_label)
+            elif "Machine Part" in comp.get('visual_label', ''):
+                diff_label = QLabel(f"<b>Objects Detected:</b> {comp['num_differences']}")
+                info_row.addWidget(diff_label)
+            elif "Signature" in comp.get('visual_label', ''):
+                diff_label = QLabel(f"<b>Signature Components:</b> {comp['num_differences']}")
+                info_row.addWidget(diff_label)
+            else:
+                diff_label = QLabel(f"<b>Differences:</b> {comp['num_differences']}")
+                info_row.addWidget(diff_label)
+
             card_layout.addLayout(info_row)
             # Images row
             images_row = QHBoxLayout()
             # Green-bounded image
             left_col = QVBoxLayout()
-            left_col.addWidget(QLabel("Differences (Green Boxes):"))
+            if "Face Crop Comparison" in comp.get('visual_label', ''):
+                left_col.addWidget(QLabel("Detected Face(s):"))
+            else:
+                left_col.addWidget(QLabel("Differences (Green Boxes):"))
             green_img = QLabel()
             green_img.setFixedSize(200, 200)
             green_img.setAlignment(Qt.AlignCenter)
             green_img.setStyleSheet("border:2px solid #00cc66; border-radius:8px; background:#f7fafd;")
             green_url = comp.get('processed_image_url')
             if green_url:
-                pix = self.try_load_image(get_backend_url() + green_url)
+                # Force refresh by appending a random query string
+                full_green_url = get_backend_url() + green_url + f"?v={random.randint(0, 1_000_000_000)}"
+                print(f"Loading processed image: {full_green_url}")
+                pix = self.try_load_image(full_green_url)
                 if pix:
                     green_img.setPixmap(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
                 else:
@@ -358,7 +421,10 @@ class VisionIQApp(QWidget):
             visual_img.setStyleSheet("border:2px solid #0073e6; border-radius:8px; background:#f7fafd;")
             visual_url = comp.get('visual_output')
             if visual_url:
-                pix = self.try_load_image(get_backend_url() + visual_url)
+                # Force refresh by appending a random query string
+                full_visual_url = get_backend_url() + visual_url + f"?v={random.randint(0, 1_000_000_000)}"
+                print(f"Loading visual output image: {full_visual_url}")
+                pix = self.try_load_image(full_visual_url)
                 if pix:
                     visual_img.setPixmap(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
                 else:

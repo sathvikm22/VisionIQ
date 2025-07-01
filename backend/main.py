@@ -7,9 +7,12 @@ from fastapi.staticfiles import StaticFiles
 from .utils.image_processing import analyze_images
 from .utils.pdf_report import generate_pdf_report
 from .models import AnalyzeResponse
+import urllib.parse
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+# Mount static files from the root static directory
+static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(
@@ -23,9 +26,9 @@ async def analyze(
     Returns similarity scores, difference counts, processed image URLs, unique visual outputs, and a PDF report URL.
     """
     start_time = time.time()
-    os.makedirs("backend/static/results", exist_ok=True)
+    os.makedirs("static/results", exist_ok=True)
     # Save master image
-    master_path = f"backend/static/results/{uuid.uuid4()}_{master_image.filename}"
+    master_path = f"static/results/{uuid.uuid4()}_{master_image.filename}"
     with open(master_path, "wb") as f:
         f.write(await master_image.read())
     # Process each comparison image
@@ -34,18 +37,20 @@ async def analyze(
     )
     # Generate PDF report
     pdf_path = generate_pdf_report(master_path, processed_paths, results)
+    # Sanitize PDF URL for response
+    pdf_url = f"/static/results/{urllib.parse.quote(os.path.basename(pdf_path))}"
     elapsed = time.time() - start_time
     # Build response
     return {
         "overall_similarity": results["overall_similarity"],
         "processing_time": elapsed,
         "comparisons": results["comparisons"],
-        "pdf_url": f"/static/results/{os.path.basename(pdf_path)}"
+        "pdf_url": pdf_url
     }
 
 @app.get("/export/{filename}")
 async def export(filename: str):
-    file_path = f"backend/static/results/{filename}"
+    file_path = f"static/results/{filename}"
     return FileResponse(file_path)
 
 @app.get("/ping")
